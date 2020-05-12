@@ -1,0 +1,64 @@
+---
+title: "join_data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+```
+
+
+
+
+```{r}
+minRel <- 10
+fileName <- "./data/MSMS_inputs.csv"
+filter_target <- TRUE
+filter_carbon <- TRUE
+filter_DBE <- FALSE
+dbeoff <- 10
+filter_S <- TRUE
+```
+
+
+```{r}
+read_csv(fileName) %>%
+  mutate(ID = paste0(Oil,"_",Target)) %>%
+  filter(I != "NA",
+         `Ion Formula` != Target) %>%
+  mutate(rdb = factor(rdb),
+         `Ion Formula` = gsub("S$","S1",`Ion Formula`),
+         Target = gsub("S$","S1",Target),
+         Oil = gsub("JH","Jianghan",Oil),
+         Oil = gsub("RP","Rozel Point",Oil)) %>%
+  mutate(Target2 = Target) %>%
+  separate(Target2, into = c("C","Other"), sep = "H") %>%
+  separate(Other, into = c("H","S"), sep = "S") %>%
+  mutate(C = as.numeric(gsub("C","",C)),
+         H = as.numeric(H),
+         S = as.numeric(ifelse(is.na(S),0,S)),
+         DBE = (C-(H/2))+1) %>%
+  mutate(`Ion Formula2` = `Ion Formula`) %>%
+  separate(`Ion Formula2`, into = c("C_","Other_"), sep = "H") %>%
+  separate(Other_, into = c("H_","S_"), sep = "S") %>%
+  mutate(C_ = as.numeric(gsub("C","",C_)),
+         H_ = as.numeric(H_),
+         S_ = as.numeric(ifelse(is.na(S_),0,S_)),
+         DBE_ = (C-(H/2))+1,
+         del_DBE = DBE_ - DBE,
+         del_C = C_ - C,
+         del_S = S_ - S) %>%
+  filter(del_C <= 0,
+         abs(del_DBE) <= 10,
+         del_S <= 0) %>%
+  group_by(ID) %>% 
+  mutate(I = round(I/max(I)*100,5)) %>%
+  filter(I >= minRel) %>%
+  select(Oil, Target, `Ion Formula`, I, del_C, del_S, del_DBE) %>%
+  arrange(Target) %>%
+  write_csv("./output/test.csv")
+
+```
+
